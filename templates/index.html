@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Plant Disease Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --green-dark:  #1a3a2a;
+    --green-mid:   #2d6a4f;
+    --green-light: #52b788;
+    --green-pale:  #d8f3dc;
+    --cream:       #faf7f2;
+    --text:        #1c2b22;
+    --text-muted:  #5a7060;
+    --white:       #ffffff;
+    --danger:      #c0392b;
+    --warning:     #e67e22;
+    --success:     #27ae60;
+    --radius:      14px;
+    --shadow:      0 4px 24px rgba(26,58,42,0.10);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  /* ---- Header ---- */
+  header {
+    background: var(--green-dark);
+    padding: 1.4rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+  .logo-leaf {
+    width: 36px; height: 36px;
+    background: var(--green-light);
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.5rem;
+    color: var(--white);
+    font-weight: 400;
+    letter-spacing: 0.01em;
+  }
+  header p {
+    font-size: 0.8rem;
+    color: var(--green-pale);
+    margin-top: 2px;
+  }
+
+  /* ---- Main layout ---- */
+  main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+  }
+
+  @media (max-width: 640px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* ---- Cards ---- */
+  .card {
+    background: var(--white);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.8rem;
+    border: 1px solid rgba(82,183,136,0.15);
+  }
+  .card h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    font-weight: 400;
+    color: var(--green-dark);
+    margin-bottom: 1.2rem;
+  }
+
+  /* ---- Upload zone ---- */
+  #drop-zone {
+    border: 2px dashed var(--green-light);
+    border-radius: 10px;
+    padding: 2.5rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+    position: relative;
+  }
+  #drop-zone:hover, #drop-zone.drag-over {
+    background: var(--green-pale);
+    border-color: var(--green-mid);
+  }
+  #drop-zone .icon {
+    width: 48px; height: 48px;
+    margin: 0 auto 1rem;
+    background: var(--green-pale);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #drop-zone .icon svg { width: 24px; height: 24px; fill: var(--green-mid); }
+  #drop-zone p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; }
+  #drop-zone strong { color: var(--green-mid); }
+  #file-input { display: none; }
+
+  /* ---- Preview ---- */
+  #preview-wrap { display: none; margin-top: 1rem; text-align: center; }
+  #preview-img {
+    width: 100%; max-height: 220px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 1px solid var(--green-pale);
+  }
+  #preview-name {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+  }
+
+  /* ---- Analyse button ---- */
+  #analyse-btn {
+    display: none;
+    width: 100%;
+    margin-top: 1.2rem;
+    padding: 0.85rem;
+    background: var(--green-mid);
+    color: var(--white);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+  }
+  #analyse-btn:hover { background: var(--green-dark); }
+  #analyse-btn:active { transform: scale(0.98); }
+  #analyse-btn:disabled { background: #aaa; cursor: not-allowed; }
+
+  /* ---- Spinner ---- */
+  .spinner {
+    display: inline-block;
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ---- Results card ---- */
+  #results-card { display: none; }
+
+  .result-header {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--green-pale);
+  }
+  .status-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .status-dot.healthy  { background: var(--success); }
+  .status-dot.diseased { background: var(--danger); }
+
+  .result-header .plant-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.3rem;
+    color: var(--green-dark);
+  }
+  .result-header .disease-name {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ---- Confidence bars ---- */
+  .pred-row {
+    margin-bottom: 0.9rem;
+  }
+  .pred-row-top {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.83rem;
+    margin-bottom: 4px;
+  }
+  .pred-label { color: var(--text); }
+  .pred-pct   { font-weight: 500; color: var(--green-mid); }
+  .bar-bg {
+    height: 8px;
+    background: var(--green-pale);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    background: var(--green-light);
+    transition: width 0.6s ease;
+  }
+  .bar-fill.rank1 { background: var(--green-mid); }
+  .bar-fill.rank2 { background: var(--green-light); opacity: 0.8; }
+  .bar-fill.rank3 { background: var(--green-light); opacity: 0.5; }
+
+  /* ---- Treatment box ---- */
+  .treatment-box {
+    margin-top: 1.2rem;
+    padding: 1rem 1.1rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    border-left: 4px solid;
+  }
+  .treatment-box.healthy  { background: #eafaf1; border-color: var(--success); color: #1e6b3a; }
+  .treatment-box.diseased { background: #fdf2f2; border-color: var(--danger);  color: #7b1e1e; }
+  .treatment-box strong   { display: block; margin-bottom: 4px; font-weight: 500; }
+
+  /* ---- Reset button ---- */
+  #reset-btn {
+    margin-top: 1.2rem;
+    width: 100%;
+    padding: 0.7rem;
+    background: transparent;
+    border: 1.5px solid var(--green-light);
+    border-radius: 8px;
+    color: var(--green-mid);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  #reset-btn:hover { background: var(--green-pale); }
+
+  /* ---- Info panel ---- */
+  .info-list { list-style: none; }
+  .info-list li {
+    display: flex;
+    gap: 0.7rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--green-pale);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    align-items: flex-start;
+  }
+  .info-list li:last-child { border-bottom: none; }
+  .info-dot {
+    width: 7px; height: 7px;
+    background: var(--green-light);
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+
+  /* ---- Error ---- */
+  #error-box {
+    display: none;
+    background: #fdf2f2;
+    border: 1px solid #f5c6c6;
+    border-radius: 8px;
+    padding: 0.9rem 1rem;
+    color: var(--danger);
+    font-size: 0.85rem;
+    margin-top: 0.8rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-leaf"></div>
+  <div>
+    <h1>Plant Disease Detector</h1>
+    <p>Upload a leaf image — get an instant AI diagnosis</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- Left: Upload card -->
+  <div class="card">
+    <h2>Upload leaf image</h2>
+
+    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="icon">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2C8.5 2 5.5 4.5 5 8c-2.2.5-4 2.5-4 5 0 2.8 2.2 5 5 5h1v-2H6c-1.7 0-3-1.3-3-3 0-1.6 1.2-2.9 2.8-3l.7-.1.1-.7C7 7.3 9.3 5 12 5c2.4 0 4.5 1.7 4.9 4.1l.2.9h1c1.1 0 2 .9 2 2s-.9 2-2 2h-1v2h1c2.2 0 4-1.8 4-4 0-2-1.4-3.6-3.3-3.9C17.9 4.3 15.2 2 12 2z"/>
+          <path d="M13 13v4h-2v-4H8l4-4 4 4h-3z"/>
+        </svg>
+      </div>
+      <p><strong>Click to browse</strong> or drag & drop<br/>JPG, PNG, WEBP · Max 10 MB</p>
+    </div>
+
+    <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp"/>
+
+    <div id="preview-wrap">
+      <img id="preview-img" src="" alt="Preview"/>
+      <p id="preview-name"></p>
+    </div>
+
+    <div id="error-box"></div>
+
+    <button id="analyse-btn" onclick="runPrediction()">Analyse leaf</button>
+  </div>
+
+  <!-- Right: Results card (hidden until prediction) -->
+  <div class="card" id="results-card">
+    <h2>Diagnosis</h2>
+
+    <div class="result-header">
+      <div class="status-dot" id="status-dot"></div>
+      <div>
+        <div class="plant-name" id="plant-name">—</div>
+        <div class="disease-name" id="disease-name">—</div>
+      </div>
+    </div>
+
+    <div id="predictions-list"></div>
+
+    <div class="treatment-box" id="treatment-box">
+      <strong>Recommended action</strong>
+      <span id="treatment-text"></span>
+    </div>
+
+    <button id="reset-btn" onclick="resetApp()">Analyse another image</button>
+  </div>
+
+  <!-- Right: Info card (shown before prediction) -->
+  <div class="card" id="info-card">
+    <h2>How it works</h2>
+    <ul class="info-list">
+      <li><span class="info-dot"></span>Upload a clear photo of a plant leaf</li>
+      <li><span class="info-dot"></span>Our CNN model analyses disease patterns</li>
+      <li><span class="info-dot"></span>Trained on 54,000+ PlantVillage images</li>
+      <li><span class="info-dot"></span>Detects 38 disease classes across 14 crops</li>
+      <li><span class="info-dot"></span>Returns top-3 predictions with confidence scores</li>
+      <li><span class="info-dot"></span>Provides treatment recommendations</li>
+    </ul>
+  </div>
+
+</main>
+
+<script>
+  const dropZone    = document.getElementById("drop-zone");
+  const fileInput   = document.getElementById("file-input");
+  const previewWrap = document.getElementById("preview-wrap");
+  const previewImg  = document.getElementById("preview-img");
+  const previewName = document.getElementById("preview-name");
+  const analyseBtn  = document.getElementById("analyse-btn");
+  const resultsCard = document.getElementById("results-card");
+  const infoCard    = document.getElementById("info-card");
+  const errorBox    = document.getElementById("error-box");
+
+  let selectedFile = null;
+
+  // Drag and drop
+  dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("drag-over"); });
+  dropZone.addEventListener("dragleave", () => dropZone.classList.remove("drag-over"));
+  dropZone.addEventListener("drop", e => {
+    e.preventDefault();
+    dropZone.classList.remove("drag-over");
+    const f = e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+
+  fileInput.addEventListener("change", () => {
+    if (fileInput.files[0]) handleFile(fileInput.files[0]);
+  });
+
+  function handleFile(file) {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.type)) {
+      showError("Please upload a JPG, PNG, or WEBP image.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showError("File too large. Max size is 10 MB.");
+      return;
+    }
+    hideError();
+    selectedFile = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      previewName.textContent = file.name;
+      previewWrap.style.display = "block";
+      analyseBtn.style.display  = "block";
+      resultsCard.style.display = "none";
+      infoCard.style.display    = "block";
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function runPrediction() {
+    if (!selectedFile) return;
+
+    analyseBtn.disabled = true;
+    analyseBtn.innerHTML = '<span class="spinner"></span> Analysing...';
+    hideError();
+
+    const formData = new FormData();
+    formData.append("file", selectedFile);
+
+    try {
+      const res  = await fetch("/predict", { method: "POST", body: formData });
+      const data = await res.json();
+
+      if (!data.success) {
+        showError(data.error || "Prediction failed.");
+        return;
+      }
+
+      renderResults(data);
+
+    } catch (err) {
+      showError("Could not connect to server. Is app.py running?");
+    } finally {
+      analyseBtn.disabled = false;
+      analyseBtn.innerHTML = "Analyse leaf";
+    }
+  }
+
+  function renderResults(data) {
+    // Show results card, hide info card
+    infoCard.style.display    = "none";
+    resultsCard.style.display = "block";
+
+    // Header
+    document.getElementById("plant-name").textContent   = data.plant;
+    document.getElementById("disease-name").textContent = data.disease;
+    const dot = document.getElementById("status-dot");
+    dot.className = "status-dot " + (data.is_healthy ? "healthy" : "diseased");
+
+    // Confidence bars
+    const list = document.getElementById("predictions-list");
+    list.innerHTML = "";
+    data.predictions.forEach((p, i) => {
+      const label = p.class.replace("___", " — ").replace(/_/g, " ");
+      list.innerHTML += `
+        <div class="pred-row">
+          <div class="pred-row-top">
+            <span class="pred-label">${label}</span>
+            <span class="pred-pct">${p.confidence.toFixed(1)}%</span>
+          </div>
+          <div class="bar-bg">
+            <div class="bar-fill rank${i+1}" style="width:${p.confidence}%"></div>
+          </div>
+        </div>`;
+    });
+
+    // Treatment
+    const box = document.getElementById("treatment-box");
+    box.className = "treatment-box " + (data.is_healthy ? "healthy" : "diseased");
+    document.getElementById("treatment-text").textContent =
+      data.predictions[0].treatment;
+  }
+
+  function resetApp() {
+    selectedFile = null;
+    fileInput.value = "";
+    previewWrap.style.display = "none";
+    analyseBtn.style.display  = "none";
+    resultsCard.style.display = "none";
+    infoCard.style.display    = "block";
+    hideError();
+  }
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = "block";
+  }
+  function hideError() {
+    errorBox.style.display = "none";
+  }
+</script>
+
+</body>
+</html>
