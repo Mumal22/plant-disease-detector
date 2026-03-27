@@ -29,6 +29,10 @@ import torch.nn.functional as F
 from torchvision import transforms
 from PIL import Image
 
+torch.set_num_threads(1)
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
 from flask import Flask, request, jsonify, render_template
 
 from model import build_model
@@ -92,10 +96,11 @@ with open(CLASS_NAMES_PATH) as f:
 model = build_model(
     num_classes=NUM_CLASSES,
     weights_path=MODEL_PATH,
-    device=device
+    device="cpu"
 )
 model.eval()
-print(f"  Model ready on {device.upper()}")
+torch.set_grad_enabled(False)
+
 
 # Image preprocessing pipeline (same as validation transform in Phase 1)
 TRANSFORM = transforms.Compose([
